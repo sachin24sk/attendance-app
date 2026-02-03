@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Ultra Admin Panel</title>
+
+<style>
+body{
+margin:0;
+font-family:Segoe UI;
+background:#eef2f7;
+display:flex;
+justify-content:center;
+align-items:center;
+height:100vh;
+}
+
+.card{
+background:white;
+width:420px;
+padding:20px;
+border-radius:14px;
+box-shadow:0 8px 22px rgba(0,0,0,0.15);
+position:relative;
+}
+
+input,select,button{
+width:100%;
+padding:10px;
+margin-top:10px;
+border-radius:8px;
+}
+
+button{
+background:#1976d2;
+color:white;
+border:none;
+font-weight:bold;
+}
+
+
+</style>
+</head>
+
+<body>
+
+<div class="card">
+
+<h2>👨‍🏫 Ultra Admin Panel</h2>
+
+<input id="password" type="password" placeholder="Admin Password">
+<button onclick="login()">Login</button>
+
+<div id="panel" style="display:none;">
+
+<select id="subject"></select>
+
+<button onclick="useMyLocation()">📍 Set Location</button>
+<button onclick="updateSettings()">💾 Update Subject & Location</button>
+
+<button onclick="openAttendancePage()">📊 Load Attendance</button>
+
+</div>
+
+
+</div>
+
+<script>
+
+let adminPassword="";
+let classLat=0;
+let classLon=0;
+
+function login(){
+ const pass=password.value.trim();
+
+ fetch("/api/admin/login",{
+ method:"POST",
+ headers:{"Content-Type":"application/json"},
+ body:JSON.stringify({password:pass})
+ })
+ .then(r=>r.json())
+ .then(d=>{
+  if(d.message!=="Login success"){alert("Wrong password");return;}
+  adminPassword=pass;
+  panel.style.display="block";
+  loadSubjects();
+ });
+}
+
+function loadSubjects(){
+ fetch("/api/admin/subjects?password="+adminPassword)
+ .then(r=>r.json())
+ .then(list=>{
+   subject.innerHTML="";
+   list.forEach(s=>{
+     subject.innerHTML+=`<option>${s}</option>`;
+   });
+ });
+}
+
+function useMyLocation(){
+ navigator.geolocation.getCurrentPosition(pos=>{
+   classLat=pos.coords.latitude;
+   classLon=pos.coords.longitude;
+   alert("Location Set ✔");
+ });
+}
+
+function updateSettings(){
+ fetch("/api/admin/settings",{
+ method:"POST",
+ headers:{"Content-Type":"application/json"},
+ body:JSON.stringify({
+   password:adminPassword,
+   subject:subject.value,
+   classLat:classLat,
+   classLon:classLon
+ })
+ })
+ .then(r=>r.json())
+ .then(d=>alert(d.message));
+}
+
+function openAttendancePage(){
+ window.location.href=
+ "/attendance.html?password="+adminPassword+
+ "&subject="+encodeURIComponent(subject.value);
+}
+
+function togglePopup(){
+ popup.style.display =
+ popup.style.display==="block"?"none":"block";
+}
+
+function addSubject(){
+ fetch("/api/admin/add-subject",{
+ method:"POST",
+ headers:{"Content-Type":"application/json"},
+ body:JSON.stringify({
+  password:adminPassword,
+  subject:newSubject.value
+ })
+ })
+ .then(()=>{
+  newSubject.value="";
+  popup.style.display="none";
+  loadSubjects();
+ });
+}
+
+</script>
+
+</body>
+</html>

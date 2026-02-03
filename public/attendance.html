@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Attendance List</title>
+<style>
+body{font-family:Segoe UI;background:#f4f6fb;padding:20px;}
+table{width:100%;border-collapse:collapse;background:white;}
+th{background:#1976d2;color:white;padding:10px;}
+td{padding:8px;text-align:center;border-bottom:1px solid #eee;}
+img{width:45px;height:45px;border-radius:50%;}
+</style>
+</head>
+
+<body>
+
+<h2>📊 Attendance</h2>
+
+<table>
+<thead>
+<tr>
+<th>Photo</th>
+<th>Name</th>
+<th>Subject</th>
+<th>Date</th>
+<th>Time</th>
+</tr>
+</thead>
+<tbody id="tableBody"></tbody>
+</table>
+
+<script>
+const params=new URLSearchParams(window.location.search);
+
+const password=params.get("password");
+const subject=params.get("subject");
+
+let url="/api/admin/attendance?password="+password;
+
+if(subject){
+ url+="&subject="+encodeURIComponent(subject);
+}
+
+fetch(url)
+.then(r=>r.json())
+.then(data=>{
+ if(!data.length){
+  tableBody.innerHTML="<tr><td colspan='5'>No Attendance Found</td></tr>";
+  return;
+ }
+ data.forEach(a=>{
+  tableBody.innerHTML+=`
+  <tr>
+  <td><img src="${a.photo}"></td>
+  <td>${a.name}</td>
+  <td>${a.subject}</td>
+  <td>${a.date}</td>
+  <td>${a.time}</td>
+  </tr>`;
+ });
+});
+</script>
+
+</body>
+</html>

@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Smart Attendance</title>
+
+<style>
+body{
+margin:0;
+font-family:Segoe UI;
+background:linear-gradient(135deg,#1976d2,#42a5f5);
+display:flex;
+justify-content:center;
+align-items:center;
+height:100vh;
+}
+
+.card{
+background:white;
+width:340px;
+padding:25px;
+border-radius:16px;
+box-shadow:0 8px 20px rgba(0,0,0,0.15);
+text-align:center;
+}
+
+input,button{
+width:100%;
+padding:12px;
+margin-top:12px;
+border-radius:10px;
+}
+
+button{
+background:#1976d2;
+color:white;
+border:none;
+font-weight:bold;
+}
+
+video{
+width:100%;
+border-radius:12px;
+margin-top:10px;
+}
+
+#status{
+margin-top:10px;
+padding:10px;
+background:#e3f2fd;
+border-radius:8px;
+white-space:pre-line;
+}
+</style>
+</head>
+
+<body>
+
+<div class="card">
+
+<h2>🎓 Smart Attendance</h2>
+
+<input id="name" placeholder="Enter Name">
+
+<video id="video" autoplay></video>
+
+<button onclick="capturePhoto()">Capture Photo</button>
+
+<canvas id="canvas" width="300" height="220" style="display:none;"></canvas>
+
+<button onclick="markAttendance()">Submit Attendance</button>
+
+<div id="status">Ready...</div>
+
+</div>
+
+<script>
+const video=document.getElementById("video");
+const statusBox=document.getElementById("status");
+let capturedPhoto="";
+
+navigator.mediaDevices.getUserMedia({video:true})
+.then(stream=>video.srcObject=stream);
+
+function capturePhoto(){
+ const canvas=document.getElementById("canvas");
+ canvas.getContext("2d").drawImage(video,0,0,300,220);
+ capturedPhoto=canvas.toDataURL("image/png");
+ statusBox.innerText="Photo captured ✔";
+}
+
+function markAttendance(){
+ const name=document.getElementById("name").value.trim();
+
+ navigator.geolocation.getCurrentPosition(pos=>{
+   fetch("/api/attendance",{
+     method:"POST",
+     headers:{"Content-Type":"application/json"},
+     body:JSON.stringify({
+       name,
+       photo:capturedPhoto,
+       latitude:pos.coords.latitude,
+       longitude:pos.coords.longitude,
+       time:new Date().toLocaleTimeString()
+     })
+   })
+   .then(r=>r.json())
+   .then(d=>{
+     statusBox.innerText =
+       d.message+"\nSubject: "+d.subject+"\nDate: "+d.date;
+   });
+ });
+}
+</script>
+
+</body>
+</html>
