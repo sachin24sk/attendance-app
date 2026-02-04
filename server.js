@@ -1,31 +1,28 @@
 const express = require("express");
 const admin = require("firebase-admin");
+const session = require("express-session");
 
 const app = express();
-
-/* ⭐ Render PORT */
 const PORT = process.env.PORT || 3000;
 
-/* ⭐ ADMIN PASSWORD (CHANGEABLE) */
-let ADMIN_PASSWORD = "12345";
+/* ================= ERP TEACHER SYSTEM ================= */
 
-/* ⭐ SETTINGS */
+const TEACHERS = {
+  teacher1: { pass: "12345", class: "BSc 4th" },
+  teacher2: { pass: "67890", class: "BSc 3rd" }
+};
+
+/* GLOBAL SETTINGS */
 let SETTINGS = {
-  subject: "BSc 4th ODE",
-  subjects: [
-    "BSc 1st Maths",
-    "BSc 2nd Physics",
-    "BSc 3rd Chemistry",
-    "BSc 4th ODE",
-    "BSc 5th English"
-  ],
+  subject: "ODE",
+  className: "BSc 4th",
   classLat: 0,
-  classLon: 0,
+  classLon: 0
 };
 
 const ALLOWED_DISTANCE = 100;
 
-/* ⭐ SECURE FIREBASE FROM RENDER ENV */
+/* FIREBASE */
 const serviceAccount = JSON.parse(process.env.FIREBASE_KEY);
 
 admin.initializeApp({
@@ -37,7 +34,13 @@ const db = admin.firestore();
 app.use(express.json({ limit: "20mb" }));
 app.use(express.static("public"));
 
-/* DISTANCE FUNCTION */
+app.use(session({
+  secret: "erp-secret",
+  resave: false,
+  saveUninitialized: true
+}));
+
+/* DISTANCE CALC */
 function getDistanceInMeters(lat1, lon1, lat2, lon2) {
   const R = 6371000;
   const dLat = (lat2 - lat1) * Math.PI / 180;
@@ -49,92 +52,54 @@ function getDistanceInMeters(lat1, lon1, lat2, lon2) {
     Math.cos(lat2 * Math.PI / 180) *
     Math.sin(dLon / 2) ** 2;
 
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return R * c;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
-/* ================= ADMIN ================= */
+/* ================= LOGIN ================= */
 
-/* ADMIN LOGIN */
 app.post("/api/admin/login", (req, res) => {
-  const { password } = req.body;
 
-  if (!password || password.trim() !== ADMIN_PASSWORD) {
-    return res.status(401).json({ message: "Wrong password" });
+  const { id, password } = req.body;
+
+  if (!TEACHERS[id] || TEACHERS[id].pass !== password) {
+    return res.status(401).json({ message: "Wrong login" });
   }
 
-  res.json({ message: "Login success" });
+  req.session.admin = id;
+
+  res.json({
+    message: "Login success",
+    class: TEACHERS[id].class
+  });
 });
 
-/* ⭐ CHANGE PASSWORD */
-app.post("/api/admin/change-password", (req, res) => {
-
-  const { oldPassword, newPassword } = req.body;
-
-  if (oldPassword !== ADMIN_PASSWORD) {
-    return res.status(401).json({ message: "Old password wrong" });
-  }
-
-  if (!newPassword) {
-    return res.json({ message: "New password empty" });
-  }
-
-  ADMIN_PASSWORD = newPassword;
-
-  res.json({ message: "Password changed successfully ✔" });
+/* CURRENT SUBJECT FOR STUDENT PAGE */
+app.get("/api/current-subject", (req, res) => {
+  res.json({
+    subject: SETTINGS.subject,
+    className: SETTINGS.className
+  });
 });
 
-/* UPDATE SUBJECT + LOCATION */
+/* ================= ADMIN SETTINGS ================= */
+
 app.post("/api/admin/settings", (req, res) => {
 
-  const { password, subject, classLat, classLon } = req.body;
+  if (!req.session.admin)
+    return res.status(401).json({ message: "Not logged in" });
 
-  if (!password || password.trim() !== ADMIN_PASSWORD) {
-    return res.status(401).json({ message: "Wrong password" });
-  }
+  const { subject, className, classLat, classLon } = req.body;
 
   SETTINGS.subject = subject;
+  SETTINGS.className = className;
   SETTINGS.classLat = Number(classLat || 0);
   SETTINGS.classLon = Number(classLon || 0);
 
-  res.json({ message: "Updated Successfully ✔" });
+  res.json({ message: "ERP Updated ✔" });
 });
 
-/* ADD SUBJECT */
-app.post("/api/admin/add-subject", (req, res) => {
+/* ================= STUDENT ATTENDANCE ================= */
 
-  const { password, subject } = req.body;
-
-  if (!password || password.trim() !== ADMIN_PASSWORD) {
-    return res.status(401).json({ message: "Wrong password" });
-  }
-
-  const s = subject.trim();
-
-  if (s && !SETTINGS.subjects.includes(s)) {
-    SETTINGS.subjects.push(s);
-  }
-
-  SETTINGS.subject = s;
-
-  res.json({ message: "Subject added ✔" });
-});
-
-/* SUBJECT LIST */
-app.get("/api/admin/subjects", (req, res) => {
-
-  const password = req.query.password;
-
-  if (!password || password.trim() !== ADMIN_PASSWORD) {
-    return res.status(401).json({ message: "Wrong password" });
-  }
-
-  res.json(SETTINGS.subjects);
-});
-
-/* ================= STUDENT ================= */
-
-/* ATTENDANCE MARK */
 app.post("/api/attendance", async (req, res) => {
 
   const { name, photo, latitude, longitude, time } = req.body;
@@ -167,9 +132,9 @@ app.post("/api/attendance", async (req, res) => {
     });
   }
 
-  /* SAVE ATTENDANCE */
   await db.collection("attendance").add({
     name,
+    className: SETTINGS.className,
     subject: SETTINGS.subject,
     photo,
     latitude,
@@ -186,24 +151,16 @@ app.post("/api/attendance", async (req, res) => {
   });
 });
 
-/* ================= VIEW ATTENDANCE ================= */
+/* ================= ERP DASHBOARD ================= */
 
 app.get("/api/admin/attendance", async (req, res) => {
 
-  const password = req.query.password;
-  const subject = req.query.subject;
+  if (!req.session.admin)
+    return res.status(401).json({ message: "Not logged in" });
 
-  if (!password || password.trim() !== ADMIN_PASSWORD) {
-    return res.status(401).json({ message: "Wrong password" });
-  }
-
-  let query = db.collection("attendance");
-
-  if (subject) {
-    query = query.where("subject", "==", subject);
-  }
-
-  const snapshot = await query.orderBy("createdAt", "desc").get();
+  const snapshot = await db.collection("attendance")
+    .orderBy("createdAt", "desc")
+    .get();
 
   const list = [];
   snapshot.forEach(doc => list.push(doc.data()));
@@ -211,8 +168,26 @@ app.get("/api/admin/attendance", async (req, res) => {
   res.json(list);
 });
 
-/* ================= SERVER START ================= */
+/* ⭐ STUDENT PERCENTAGE ERP */
+app.get("/api/admin/stats", async (req, res) => {
+
+  if (!req.session.admin)
+    return res.status(401).json({ message: "Not logged in" });
+
+  const snapshot = await db.collection("attendance").get();
+
+  const students = {};
+
+  snapshot.forEach(doc => {
+    const d = doc.data();
+    students[d.name] = (students[d.name] || 0) + 1;
+  });
+
+  res.json(students);
+});
+
+/* ================= START SERVER ================= */
 
 app.listen(PORT, () => {
-  console.log("Server running...");
+  console.log("🚀 ULTIMATE ERP SCHOOL SYSTEM RUNNING");
 });
