@@ -2,95 +2,33 @@
 <html>
 <head>
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>Attendance Dashboard</title>
+<title>Ultra Dashboard</title>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
 <style>
-
-body{
-font-family:Segoe UI;
-background:#eef2f7;
-padding:15px;
-margin:0;
-}
-
-.topBar{
-display:flex;
-flex-wrap:wrap;
-gap:8px;
-margin-bottom:15px;
-}
-
-select,input,button{
-padding:8px;
-border-radius:6px;
-border:1px solid #ccc;
-font-size:14px;
-}
-
-.stats{
-display:flex;
-flex-wrap:wrap;
-gap:10px;
-margin-bottom:10px;
-}
-
-.card{
-background:white;
-padding:10px;
-border-radius:8px;
-font-weight:bold;
-flex:1;
-min-width:120px;
-text-align:center;
-}
-
-.tableWrap{
-overflow-x:auto;
-}
-
-table{
-width:100%;
-border-collapse:collapse;
-background:white;
-min-width:500px;
-}
-
-th{
-background:#1976d2;
-color:white;
-padding:8px;
-}
-
-td{
-padding:8px;
-text-align:center;
-border-bottom:1px solid #eee;
-}
-
-img{
-width:40px;
-height:40px;
-border-radius:50%;
-}
-
+body{font-family:Segoe UI;background:#eef2f7;padding:15px;margin:0;}
+.topBar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;}
+select,input,button{padding:8px;border-radius:6px;border:1px solid #ccc;}
+table{width:100%;background:white;border-collapse:collapse;}
+th{background:#1976d2;color:white;padding:8px;}
+td{padding:8px;text-align:center;border-bottom:1px solid #eee;}
+img{width:40px;height:40px;border-radius:50%;}
 </style>
 </head>
 
 <body>
 
-<h3>📊 Attendance Dashboard</h3>
+<h3>📊 Ultra Attendance Dashboard</h3>
 
 <div class="topBar">
 <select id="subjectFilter"><option value="">All</option></select>
 <input id="searchBox" placeholder="Search">
+<button onclick="downloadExcel()">📊 Excel</button>
+<button onclick="downloadPDF()">📄 PDF</button>
+<button onclick="changePassword()">🔐 Change Password</button>
 </div>
 
-<div class="stats">
-<div class="card">👥 Total <span id="totalCount">0</span></div>
-<div class="card">📅 Today <span id="todayCount">0</span></div>
-</div>
-
-<div class="tableWrap">
 <table>
 <thead>
 <tr>
@@ -103,7 +41,6 @@ border-radius:50%;
 </thead>
 <tbody id="tableBody"></tbody>
 </table>
-</div>
 
 <script>
 
@@ -111,12 +48,12 @@ const tableBody=document.getElementById("tableBody");
 const subjectFilter=document.getElementById("subjectFilter");
 const searchBox=document.getElementById("searchBox");
 
-const totalCount=document.getElementById("totalCount");
-const todayCount=document.getElementById("todayCount");
+const params=new URLSearchParams(window.location.search);
+let password=params.get("password")||"12345";
 
-const password="12345";
 let allData=[];
 
+/* LOAD DATA */
 function loadAttendance(){
 fetch("/api/admin/attendance?password="+password)
 .then(r=>r.json())
@@ -138,14 +75,12 @@ subjectFilter.appendChild(o);
 }
 
 function renderTable(data){
-
 tableBody.innerHTML="";
-const today=new Date().toLocaleDateString();
-let todayTotal=0;
-
+if(!data.length){
+tableBody.innerHTML="<tr><td colspan='5'>No Attendance</td></tr>";
+return;
+}
 data.forEach(a=>{
-if(a.date===today) todayTotal++;
-
 const row=document.createElement("tr");
 row.innerHTML=`
 <td><img src="${a.photo}"></td>
@@ -155,28 +90,66 @@ row.innerHTML=`
 <td>${a.time}</td>`;
 tableBody.appendChild(row);
 });
-
-totalCount.textContent=data.length;
-todayCount.textContent=todayTotal;
 }
 
 function applyFilters(){
-
 let filtered=[...allData];
-
 if(subjectFilter.value)
 filtered=filtered.filter(d=>d.subject===subjectFilter.value);
-
 if(searchBox.value)
 filtered=filtered.filter(d=>d.name.toLowerCase().includes(searchBox.value.toLowerCase()));
-
 renderTable(filtered);
 }
 
 subjectFilter.onchange=applyFilters;
 searchBox.oninput=applyFilters;
 
-setInterval(loadAttendance,10000);
+/* ⭐ EXCEL DOWNLOAD */
+function downloadExcel(){
+let csv="Name,Subject,Date,Time\n";
+allData.forEach(a=>{
+csv+=`${a.name},${a.subject},${a.date},${a.time}\n`;
+});
+const blob=new Blob([csv],{type:"text/csv"});
+const url=URL.createObjectURL(blob);
+const a=document.createElement("a");
+a.href=url;
+a.download="attendance.csv";
+a.click();
+}
+
+/* ⭐ PDF DOWNLOAD */
+function downloadPDF(){
+const {jsPDF}=window.jspdf;
+const doc=new jsPDF();
+let y=10;
+doc.text("Attendance List",10,y);
+y+=10;
+
+allData.forEach(a=>{
+doc.text(`${a.name} | ${a.subject} | ${a.date} | ${a.time}`,10,y);
+y+=8;
+});
+
+doc.save("attendance.pdf");
+}
+
+/* ⭐ PASSWORD CHANGE */
+function changePassword(){
+
+const oldPass=prompt("Old Password:");
+const newPass=prompt("New Password:");
+
+fetch("/api/admin/change-password",{
+method:"POST",
+headers:{"Content-Type":"application/json"},
+body:JSON.stringify({oldPassword:oldPass,newPassword:newPass})
+})
+.then(r=>r.json())
+.then(d=>alert(d.message));
+}
+
+setInterval(loadAttendance,8000);
 loadAttendance();
 
 </script>
