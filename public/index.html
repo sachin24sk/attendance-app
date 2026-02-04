@@ -5,51 +5,47 @@
 <title>Smart Attendance</title>
 
 <style>
-
 body{
 margin:0;
 font-family:Segoe UI;
-background:linear-gradient(135deg,#1976d2,#42a5f5);
+background:#1976d2;
 display:flex;
 justify-content:center;
 align-items:center;
 min-height:100vh;
 padding:15px;
 }
-
 .card{
 background:white;
 width:100%;
 max-width:360px;
 padding:20px;
 border-radius:14px;
-box-shadow:0 6px 18px rgba(0,0,0,0.15);
 text-align:center;
 }
-
 input,button{
 width:100%;
 padding:12px;
-margin-top:12px;
-border-radius:10px;
-font-size:16px;
+margin-top:10px;
+border-radius:8px;
 }
-
 video{
 width:100%;
 border-radius:10px;
 margin-top:10px;
 }
-
 #status{
 margin-top:10px;
 background:#e3f2fd;
 padding:10px;
 border-radius:8px;
 white-space:pre-line;
-font-size:14px;
 }
-
+#subjectTitle{
+font-weight:bold;
+margin-bottom:8px;
+color:#1976d2;
+}
 </style>
 </head>
 
@@ -58,12 +54,14 @@ font-size:14px;
 <div class="card">
 
 <h3>🎓 Smart Attendance</h3>
+<div id="subjectTitle">Loading subject...</div>
 
 <input id="name" placeholder="Enter Name">
 
-<video id="video" autoplay></video>
+<video id="video" autoplay playsinline></video>
 
 <button onclick="capturePhoto()">Capture Photo</button>
+
 <canvas id="canvas" width="300" height="220" style="display:none;"></canvas>
 
 <button onclick="markAttendance()">Submit Attendance</button>
@@ -76,10 +74,23 @@ font-size:14px;
 
 const video=document.getElementById("video");
 const statusBox=document.getElementById("status");
+const subjectTitle=document.getElementById("subjectTitle");
+
 let capturedPhoto="";
 
-navigator.mediaDevices.getUserMedia({video:true})
-.then(stream=>video.srcObject=stream);
+/* ⭐ LOAD CURRENT SUBJECT */
+fetch("/api/current-subject")
+.then(r=>r.json())
+.then(d=>{
+subjectTitle.innerText="Subject: "+d.subject;
+});
+
+/* MOBILE CAMERA */
+navigator.mediaDevices.getUserMedia({
+video:{facingMode:"environment"}
+})
+.then(stream=>video.srcObject=stream)
+.catch(()=>statusBox.innerText="Camera permission allow karo");
 
 function capturePhoto(){
 const canvas=document.getElementById("canvas");
@@ -90,9 +101,20 @@ statusBox.innerText="Photo captured ✔";
 
 function markAttendance(){
 
-const name=document.getElementById("name").value;
+const name=document.getElementById("name").value.trim();
+
+if(!name){
+statusBox.innerText="Name enter karo";
+return;
+}
+
+if(!capturedPhoto){
+statusBox.innerText="Photo capture karo";
+return;
+}
 
 navigator.geolocation.getCurrentPosition(pos=>{
+
 fetch("/api/attendance",{
 method:"POST",
 headers:{"Content-Type":"application/json"},
@@ -106,10 +128,11 @@ time:new Date().toLocaleTimeString()
 })
 .then(r=>r.json())
 .then(d=>{
-statusBox.innerText=d.message+"\n"+d.subject+"\n"+d.date;
-});
+statusBox.innerText=
+d.message+"\nSubject: "+d.subject+"\nDate: "+d.date;
 });
 
+},{enableHighAccuracy:true});
 }
 
 </script>
