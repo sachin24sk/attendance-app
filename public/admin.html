@@ -2,35 +2,130 @@
 <html>
 <head>
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>ERP Teacher Login</title>
+<title>Teacher ERP Login</title>
+
+<style>
+
+body{
+margin:0;
+font-family:Segoe UI;
+background:linear-gradient(135deg,#1976d2,#42a5f5);
+display:flex;
+justify-content:center;
+align-items:center;
+min-height:100vh;
+padding:15px;
+}
+
+.card{
+background:white;
+width:100%;
+max-width:380px;
+padding:25px;
+border-radius:14px;
+box-shadow:0 8px 20px rgba(0,0,0,0.2);
+text-align:center;
+}
+
+h2{
+margin-top:0;
+color:#1976d2;
+}
+
+select,input,button{
+width:100%;
+padding:12px;
+margin-top:12px;
+border-radius:8px;
+border:1px solid #ccc;
+font-size:15px;
+}
+
+button{
+background:#1976d2;
+color:white;
+font-weight:bold;
+border:none;
+cursor:pointer;
+}
+
+button:hover{
+background:#1565c0;
+}
+
+#status{
+margin-top:10px;
+font-size:14px;
+color:#1976d2;
+}
+
+.badge{
+background:#e3f2fd;
+padding:6px;
+border-radius:6px;
+margin-top:8px;
+font-size:13px;
+}
+
+</style>
 </head>
+
 <body>
 
-<h3>Teacher Login</h3>
+<div class="card">
 
-<input id="id" placeholder="Teacher ID">
-<input id="password" type="password" placeholder="Password">
+<h2>👨‍🏫 Teacher ERP Login</h2>
+
+<select id="teacherId">
+<option value="">Select Teacher ID</option>
+<option value="teacher1">teacher1</option>
+<option value="teacher2">teacher2</option>
+</select>
+
+<input id="password" type="password" placeholder="Enter Password">
+
 <button onclick="login()">Login</button>
+
+<div id="status"></div>
+
+<div class="badge">Secure ERP Session Login</div>
+
+</div>
 
 <script>
 
+const statusBox=document.getElementById("status");
+
 function login(){
+
+const id=document.getElementById("teacherId").value;
+const password=document.getElementById("password").value;
+
+if(!id){
+statusBox.innerText="Teacher ID select karo";
+return;
+}
 
 fetch("/api/admin/login",{
 method:"POST",
 headers:{"Content-Type":"application/json"},
-body:JSON.stringify({
-id:id.value,
-password:password.value
-})
+body:JSON.stringify({id,password})
 })
 .then(r=>r.json())
 .then(d=>{
+
 if(d.message==="Login success"){
+
+statusBox.innerText="Login Success ✔ Redirecting...";
+
+setTimeout(()=>{
 location.href="/attendance.html";
+},800);
+
 }else{
-alert("Wrong login");
+statusBox.innerText="Wrong ID ya Password";
 }
+
 });
 
 }
