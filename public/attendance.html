@@ -2,14 +2,10 @@
 <html>
 <head>
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>Ultra Dashboard</title>
-
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<title>ERP Attendance Dashboard</title>
 
 <style>
-body{font-family:Segoe UI;background:#eef2f7;padding:15px;margin:0;}
-.topBar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;}
-select,input,button{padding:8px;border-radius:6px;border:1px solid #ccc;}
+body{font-family:Segoe UI;background:#eef2f7;padding:15px;}
 table{width:100%;background:white;border-collapse:collapse;}
 th{background:#1976d2;color:white;padding:8px;}
 td{padding:8px;text-align:center;border-bottom:1px solid #eee;}
@@ -19,15 +15,7 @@ img{width:40px;height:40px;border-radius:50%;}
 
 <body>
 
-<h3>📊 Ultra Attendance Dashboard</h3>
-
-<div class="topBar">
-<select id="subjectFilter"><option value="">All</option></select>
-<input id="searchBox" placeholder="Search">
-<button onclick="downloadExcel()">📊 Excel</button>
-<button onclick="downloadPDF()">📄 PDF</button>
-<button onclick="changePassword()">🔐 Change Password</button>
-</div>
+<h3>📊 ERP Attendance Dashboard</h3>
 
 <table>
 <thead>
@@ -45,112 +33,37 @@ img{width:40px;height:40px;border-radius:50%;}
 <script>
 
 const tableBody=document.getElementById("tableBody");
-const subjectFilter=document.getElementById("subjectFilter");
-const searchBox=document.getElementById("searchBox");
 
-const params=new URLSearchParams(window.location.search);
-let password=params.get("password")||"12345";
-
-let allData=[];
-
-/* LOAD DATA */
-function loadAttendance(){
-fetch("/api/admin/attendance?password="+password)
-.then(r=>r.json())
-.then(data=>{
-allData=data;
-fillDropdown(data);
-applyFilters();
-});
-}
-
-function fillDropdown(data){
-subjectFilter.innerHTML='<option value="">All</option>';
-[...new Set(data.map(d=>d.subject))].forEach(s=>{
-const o=document.createElement("option");
-o.value=s;
-o.textContent=s;
-subjectFilter.appendChild(o);
-});
-}
-
-function renderTable(data){
-tableBody.innerHTML="";
-if(!data.length){
-tableBody.innerHTML="<tr><td colspan='5'>No Attendance</td></tr>";
+/* SESSION CHECK */
+fetch("/api/admin/attendance")
+.then(r=>{
+if(r.status===401){
+location.href="/admin.html";
 return;
 }
+return r.json();
+})
+.then(data=>{
+
+tableBody.innerHTML="";
+
 data.forEach(a=>{
+
 const row=document.createElement("tr");
+
 row.innerHTML=`
 <td><img src="${a.photo}"></td>
 <td>${a.name}</td>
 <td>${a.subject}</td>
 <td>${a.date}</td>
-<td>${a.time}</td>`;
+<td>${a.time}</td>
+`;
+
 tableBody.appendChild(row);
-});
-}
 
-function applyFilters(){
-let filtered=[...allData];
-if(subjectFilter.value)
-filtered=filtered.filter(d=>d.subject===subjectFilter.value);
-if(searchBox.value)
-filtered=filtered.filter(d=>d.name.toLowerCase().includes(searchBox.value.toLowerCase()));
-renderTable(filtered);
-}
-
-subjectFilter.onchange=applyFilters;
-searchBox.oninput=applyFilters;
-
-/* ⭐ EXCEL DOWNLOAD */
-function downloadExcel(){
-let csv="Name,Subject,Date,Time\n";
-allData.forEach(a=>{
-csv+=`${a.name},${a.subject},${a.date},${a.time}\n`;
-});
-const blob=new Blob([csv],{type:"text/csv"});
-const url=URL.createObjectURL(blob);
-const a=document.createElement("a");
-a.href=url;
-a.download="attendance.csv";
-a.click();
-}
-
-/* ⭐ PDF DOWNLOAD */
-function downloadPDF(){
-const {jsPDF}=window.jspdf;
-const doc=new jsPDF();
-let y=10;
-doc.text("Attendance List",10,y);
-y+=10;
-
-allData.forEach(a=>{
-doc.text(`${a.name} | ${a.subject} | ${a.date} | ${a.time}`,10,y);
-y+=8;
 });
 
-doc.save("attendance.pdf");
-}
-
-/* ⭐ PASSWORD CHANGE */
-function changePassword(){
-
-const oldPass=prompt("Old Password:");
-const newPass=prompt("New Password:");
-
-fetch("/api/admin/change-password",{
-method:"POST",
-headers:{"Content-Type":"application/json"},
-body:JSON.stringify({oldPassword:oldPass,newPassword:newPass})
-})
-.then(r=>r.json())
-.then(d=>alert(d.message));
-}
-
-setInterval(loadAttendance,8000);
-loadAttendance();
+});
 
 </script>
 
