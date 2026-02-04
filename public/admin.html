@@ -2,14 +2,14 @@
 <html>
 <head>
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>Teacher ERP Panel</title>
+<title>ERP Admin Panel</title>
 
 <style>
 
 body{
 margin:0;
 font-family:Segoe UI;
-background:#eef2f7;
+background:linear-gradient(135deg,#1976d2,#42a5f5);
 display:flex;
 justify-content:center;
 align-items:center;
@@ -20,37 +20,53 @@ padding:15px;
 .card{
 background:white;
 width:100%;
-max-width:400px;
-padding:20px;
+max-width:420px;
+padding:22px;
 border-radius:14px;
-box-shadow:0 6px 18px rgba(0,0,0,0.15);
+box-shadow:0 10px 25px rgba(0,0,0,0.2);
 text-align:center;
 }
 
-select,input,button{
+h3{
+margin-top:0;
+color:#1976d2;
+}
+
+input,select,button{
 width:100%;
 padding:12px;
 margin-top:10px;
 border-radius:8px;
 font-size:15px;
+border:1px solid #ccc;
 }
 
 button{
 background:#1976d2;
 color:white;
-border:none;
 font-weight:bold;
+border:none;
 cursor:pointer;
+}
+
+button:hover{
+background:#1565c0;
+}
+
+.section{
+margin-top:15px;
+padding-top:10px;
+border-top:1px solid #eee;
 }
 
 #panel{
 display:none;
-margin-top:15px;
 }
 
 #status{
 margin-top:8px;
 color:#1976d2;
+font-size:14px;
 }
 
 </style>
@@ -60,8 +76,9 @@ color:#1976d2;
 
 <div class="card">
 
-<h3>👨‍🏫 Teacher Login</h3>
+<h3>👨‍🏫 ERP Admin Panel</h3>
 
+<!-- LOGIN -->
 <select id="teacherId">
 <option value="">Select Teacher</option>
 <option value="teacher1">teacher1</option>
@@ -74,12 +91,37 @@ color:#1976d2;
 
 <div id="status"></div>
 
-<!-- ⭐ ADMIN PANEL -->
+<!-- ADMIN PANEL -->
 <div id="panel">
 
-<hr>
+<div class="section">
 
-<h4>Teacher Panel</h4>
+<h4>📚 Subject & Location</h4>
+
+<select id="subject">
+<option>ODE</option>
+<option>Maths</option>
+<option>Physics</option>
+<option>Chemistry</option>
+</select>
+
+<button onclick="useMyLocation()">📍 Set My Location</button>
+<button onclick="updateSettings()">💾 Update</button>
+
+</div>
+
+<div class="section">
+
+<h4>🔐 Change Password</h4>
+
+<input id="oldPass" type="password" placeholder="Old Password">
+<input id="newPass" type="password" placeholder="New Password">
+
+<button onclick="changePassword()">Change Password</button>
+
+</div>
+
+<div class="section">
 
 <button onclick="openAttendance()">📊 Open Attendance Dashboard</button>
 
@@ -87,12 +129,18 @@ color:#1976d2;
 
 </div>
 
+</div>
+
 <script>
 
-const statusBox=document.getElementById("status");
+let classLat=0;
+let classLon=0;
+
 const panel=document.getElementById("panel");
+const statusBox=document.getElementById("status");
 
 /* LOGIN */
+
 function login(){
 
 fetch("/api/admin/login",{
@@ -107,10 +155,8 @@ password:password.value
 .then(d=>{
 
 if(d.message==="Login success"){
-
 statusBox.innerText="Login Success ✔";
-panel.style.display="block";   // ⭐ अब admin panel दिखेगा
-
+panel.style.display="block";
 }else{
 statusBox.innerText="Wrong login";
 }
@@ -119,7 +165,63 @@ statusBox.innerText="Wrong login";
 
 }
 
+/* LOCATION */
+
+function useMyLocation(){
+
+navigator.geolocation.getCurrentPosition(pos=>{
+
+classLat=pos.coords.latitude;
+classLon=pos.coords.longitude;
+
+statusBox.innerText="Location Set ✔";
+
+});
+
+}
+
+/* UPDATE SETTINGS */
+
+function updateSettings(){
+
+fetch("/api/admin/settings",{
+method:"POST",
+headers:{"Content-Type":"application/json"},
+body:JSON.stringify({
+subject:subject.value,
+className:"BSc",
+classLat,
+classLon
+})
+})
+.then(r=>r.json())
+.then(d=>{
+statusBox.innerText=d.message;
+});
+
+}
+
+/* ⭐ CHANGE PASSWORD */
+
+function changePassword(){
+
+fetch("/api/admin/change-password",{
+method:"POST",
+headers:{"Content-Type":"application/json"},
+body:JSON.stringify({
+oldPassword:oldPass.value,
+newPassword:newPass.value
+})
+})
+.then(r=>r.json())
+.then(d=>{
+statusBox.innerText=d.message;
+});
+
+}
+
 /* OPEN ATTENDANCE */
+
 function openAttendance(){
 location.href="/attendance.html";
 }
