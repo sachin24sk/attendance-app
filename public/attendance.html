@@ -2,22 +2,78 @@
 <html>
 <head>
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>ERP Attendance Dashboard</title>
+<title>Attendance Dashboard</title>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
 <style>
-body{font-family:Segoe UI;background:#eef2f7;padding:15px;}
-table{width:100%;background:white;border-collapse:collapse;}
-th{background:#1976d2;color:white;padding:8px;}
-td{padding:8px;text-align:center;border-bottom:1px solid #eee;}
-img{width:40px;height:40px;border-radius:50%;}
+
+body{
+font-family:Segoe UI;
+background:#eef2f7;
+padding:15px;
+margin:0;
+}
+
+.topBar{
+display:flex;
+gap:8px;
+flex-wrap:wrap;
+margin-bottom:12px;
+}
+
+select,input,button{
+padding:8px;
+border-radius:6px;
+border:1px solid #ccc;
+}
+
+table{
+width:100%;
+background:white;
+border-collapse:collapse;
+}
+
+th{
+background:#1976d2;
+color:white;
+padding:8px;
+}
+
+td{
+padding:8px;
+text-align:center;
+border-bottom:1px solid #eee;
+}
+
+img{
+width:40px;
+height:40px;
+border-radius:50%;
+}
+
 </style>
 </head>
 
 <body>
 
-<h3>📊 ERP Attendance Dashboard</h3>
+<h3>📊 Attendance Dashboard</h3>
+
+<div class="topBar">
+
+<select id="subjectFilter">
+<option value="">All Subjects</option>
+</select>
+
+<input id="searchBox" placeholder="Search student">
+
+<button onclick="downloadExcel()">📊 Excel</button>
+<button onclick="downloadPDF()">📄 PDF</button>
+
+</div>
 
 <table>
+
 <thead>
 <tr>
 <th>Photo</th>
@@ -27,25 +83,73 @@ img{width:40px;height:40px;border-radius:50%;}
 <th>Time</th>
 </tr>
 </thead>
+
 <tbody id="tableBody"></tbody>
+
 </table>
 
 <script>
 
 const tableBody=document.getElementById("tableBody");
+const subjectFilter=document.getElementById("subjectFilter");
+const searchBox=document.getElementById("searchBox");
 
-/* SESSION CHECK */
+let allData=[];
+
+/* ⭐ LOAD ATTENDANCE (SESSION LOGIN) */
+
+function loadAttendance(){
+
 fetch("/api/admin/attendance")
 .then(r=>{
+
 if(r.status===401){
-location.href="/admin.html";
-return;
+ location.href="/admin.html";
+ return;
 }
+
 return r.json();
+
 })
 .then(data=>{
 
+if(!data) return;
+
+allData=data;
+
+fillDropdown(data);
+applyFilters();
+
+});
+}
+
+/* SUBJECT DROPDOWN */
+
+function fillDropdown(data){
+
+subjectFilter.innerHTML='<option value="">All Subjects</option>';
+
+const subjects=[...new Set(data.map(d=>d.subject))];
+
+subjects.forEach(s=>{
+const opt=document.createElement("option");
+opt.value=s;
+opt.textContent=s;
+subjectFilter.appendChild(opt);
+});
+
+}
+
+/* TABLE RENDER */
+
+function renderTable(data){
+
 tableBody.innerHTML="";
+
+if(!data.length){
+tableBody.innerHTML="<tr><td colspan='5'>No Attendance</td></tr>";
+return;
+}
 
 data.forEach(a=>{
 
@@ -63,7 +167,93 @@ tableBody.appendChild(row);
 
 });
 
+}
+
+/* FILTER SYSTEM */
+
+function applyFilters(){
+
+let filtered=[...allData];
+
+if(subjectFilter.value){
+ filtered=filtered.filter(d=>d.subject===subjectFilter.value);
+}
+
+if(searchBox.value){
+ filtered=filtered.filter(d=>d.name.toLowerCase()
+ .includes(searchBox.value.toLowerCase()));
+}
+
+renderTable(filtered);
+
+}
+
+subjectFilter.onchange=applyFilters;
+searchBox.oninput=applyFilters;
+
+/* ⭐ EXCEL DOWNLOAD */
+
+function downloadExcel(){
+
+let csv="Name,Subject,Date,Time,PhotoURL\n";
+
+allData.forEach(a=>{
+csv+=`${a.name},${a.subject},${a.date},${a.time},${a.photo}\n`;
 });
+
+const blob=new Blob([csv],{type:"text/csv"});
+const url=URL.createObjectURL(blob);
+
+const a=document.createElement("a");
+a.href=url;
+a.download="attendance.csv";
+a.click();
+
+}
+
+/* ⭐ PDF DOWNLOAD WITH PHOTO */
+
+async function downloadPDF(){
+
+const {jsPDF}=window.jspdf;
+const doc=new jsPDF();
+
+let y=10;
+
+doc.text("Attendance List",10,y);
+y+=10;
+
+for(const a of allData){
+
+doc.text(`${a.name} | ${a.subject} | ${a.date}`,10,y);
+y+=5;
+
+try{
+
+const img=await fetch(a.photo)
+.then(r=>r.blob())
+.then(b=>new Promise(res=>{
+const reader=new FileReader();
+reader.onload=()=>res(reader.result);
+reader.readAsDataURL(b);
+}));
+
+doc.addImage(img,"PNG",10,y,20,20);
+y+=25;
+
+}catch(e){
+y+=10;
+}
+
+}
+
+doc.save("attendance.pdf");
+
+}
+
+/* AUTO LOAD */
+
+loadAttendance();
 
 </script>
 
