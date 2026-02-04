@@ -2,14 +2,14 @@
 <html>
 <head>
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>Teacher ERP Login</title>
+<title>Teacher ERP Panel</title>
 
 <style>
 
 body{
 margin:0;
 font-family:Segoe UI;
-background:linear-gradient(135deg,#1976d2,#42a5f5);
+background:#eef2f7;
 display:flex;
 justify-content:center;
 align-items:center;
@@ -20,51 +20,37 @@ padding:15px;
 .card{
 background:white;
 width:100%;
-max-width:380px;
-padding:25px;
+max-width:400px;
+padding:20px;
 border-radius:14px;
-box-shadow:0 8px 20px rgba(0,0,0,0.2);
+box-shadow:0 6px 18px rgba(0,0,0,0.15);
 text-align:center;
-}
-
-h2{
-margin-top:0;
-color:#1976d2;
 }
 
 select,input,button{
 width:100%;
 padding:12px;
-margin-top:12px;
+margin-top:10px;
 border-radius:8px;
-border:1px solid #ccc;
 font-size:15px;
 }
 
 button{
 background:#1976d2;
 color:white;
-font-weight:bold;
 border:none;
+font-weight:bold;
 cursor:pointer;
 }
 
-button:hover{
-background:#1565c0;
+#panel{
+display:none;
+margin-top:15px;
 }
 
 #status{
-margin-top:10px;
-font-size:14px;
-color:#1976d2;
-}
-
-.badge{
-background:#e3f2fd;
-padding:6px;
-border-radius:6px;
 margin-top:8px;
-font-size:13px;
+color:#1976d2;
 }
 
 </style>
@@ -74,60 +60,68 @@ font-size:13px;
 
 <div class="card">
 
-<h2>👨‍🏫 Teacher ERP Login</h2>
+<h3>👨‍🏫 Teacher Login</h3>
 
 <select id="teacherId">
-<option value="">Select Teacher ID</option>
+<option value="">Select Teacher</option>
 <option value="teacher1">teacher1</option>
 <option value="teacher2">teacher2</option>
 </select>
 
-<input id="password" type="password" placeholder="Enter Password">
+<input id="password" type="password" placeholder="Password">
 
 <button onclick="login()">Login</button>
 
 <div id="status"></div>
 
-<div class="badge">Secure ERP Session Login</div>
+<!-- ⭐ ADMIN PANEL -->
+<div id="panel">
+
+<hr>
+
+<h4>Teacher Panel</h4>
+
+<button onclick="openAttendance()">📊 Open Attendance Dashboard</button>
+
+</div>
 
 </div>
 
 <script>
 
 const statusBox=document.getElementById("status");
+const panel=document.getElementById("panel");
 
+/* LOGIN */
 function login(){
-
-const id=document.getElementById("teacherId").value;
-const password=document.getElementById("password").value;
-
-if(!id){
-statusBox.innerText="Teacher ID select karo";
-return;
-}
 
 fetch("/api/admin/login",{
 method:"POST",
 headers:{"Content-Type":"application/json"},
-body:JSON.stringify({id,password})
+body:JSON.stringify({
+id:teacherId.value,
+password:password.value
+})
 })
 .then(r=>r.json())
 .then(d=>{
 
 if(d.message==="Login success"){
 
-statusBox.innerText="Login Success ✔ Redirecting...";
-
-setTimeout(()=>{
-location.href="/attendance.html";
-},800);
+statusBox.innerText="Login Success ✔";
+panel.style.display="block";   // ⭐ अब admin panel दिखेगा
 
 }else{
-statusBox.innerText="Wrong ID ya Password";
+statusBox.innerText="Wrong login";
 }
 
 });
 
+}
+
+/* OPEN ATTENDANCE */
+function openAttendance(){
+location.href="/attendance.html";
 }
 
 </script>
