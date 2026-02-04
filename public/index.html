@@ -72,70 +72,92 @@ color:#1976d2;
 
 <script>
 
-const video=document.getElementById("video");
-const statusBox=document.getElementById("status");
-const subjectTitle=document.getElementById("subjectTitle");
+const video = document.getElementById("video");
+const statusBox = document.getElementById("status");
 
-let capturedPhoto="";
+let capturedPhoto = "";
 
-/* ⭐ LOAD CURRENT SUBJECT */
+/* SUBJECT HEADING LOAD */
 fetch("/api/current-subject")
 .then(r=>r.json())
 .then(d=>{
-subjectTitle.innerText="Subject: "+d.subject;
+document.getElementById("subjectTitle").innerText =
+"Subject: " + d.subject;
 });
 
 /* MOBILE CAMERA */
 navigator.mediaDevices.getUserMedia({
-video:{facingMode:"environment"}
+ video:{facingMode:"environment"}
 })
-.then(stream=>video.srcObject=stream)
-.catch(()=>statusBox.innerText="Camera permission allow karo");
+.then(stream=>{
+ video.srcObject = stream;
+})
+.catch(()=>{
+ statusBox.innerText="Camera permission allow karo";
+});
 
+/* PHOTO CAPTURE */
 function capturePhoto(){
+
 const canvas=document.getElementById("canvas");
 canvas.getContext("2d").drawImage(video,0,0,300,220);
-capturedPhoto=canvas.toDataURL("image/png");
+capturedPhoto = canvas.toDataURL("image/png");
+
 statusBox.innerText="Photo captured ✔";
+
 }
 
+/* ⭐ FINAL ATTENDANCE FUNCTION */
 function markAttendance(){
 
 const name=document.getElementById("name").value.trim();
 
 if(!name){
-statusBox.innerText="Name enter karo";
-return;
+ statusBox.innerText="Name enter karo";
+ return;
 }
 
 if(!capturedPhoto){
-statusBox.innerText="Photo capture karo";
-return;
+ statusBox.innerText="Photo capture karo";
+ return;
 }
 
+statusBox.innerText="Sending attendance...";
+
+/* LOCATION */
 navigator.geolocation.getCurrentPosition(pos=>{
 
 fetch("/api/attendance",{
-method:"POST",
-headers:{"Content-Type":"application/json"},
-body:JSON.stringify({
-name,
-photo:capturedPhoto,
-latitude:pos.coords.latitude,
-longitude:pos.coords.longitude,
-time:new Date().toLocaleTimeString()
-})
+ method:"POST",
+ headers:{"Content-Type":"application/json"},
+ body:JSON.stringify({
+  name:name,
+  photo:capturedPhoto,
+  latitude:pos.coords.latitude,
+  longitude:pos.coords.longitude,
+  time:new Date().toLocaleTimeString()
+ })
 })
 .then(r=>r.json())
 .then(d=>{
-statusBox.innerText=
-d.message+"\nSubject: "+d.subject+"\nDate: "+d.date;
+ statusBox.innerText =
+ d.message + "\nSubject: " + d.subject + "\nDate: " + d.date;
+})
+.catch(()=>{
+ statusBox.innerText="Server error";
 });
 
-},{enableHighAccuracy:true});
+},
+()=>{
+ statusBox.innerText="Location allow karo";
+},
+{enableHighAccuracy:true});
+
 }
 
 </script>
 
+
 </body>
 </html>
+
