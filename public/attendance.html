@@ -29,36 +29,47 @@ img{width:45px;height:45px;border-radius:50%;}
 </table>
 
 <script>
-const params=new URLSearchParams(window.location.search);
 
-const password=params.get("password");
-const subject=params.get("subject");
+const params = new URLSearchParams(window.location.search);
 
-let url="/api/admin/attendance?password="+password;
+const password = params.get("password");
+const subject  = params.get("subject");
 
-if(subject){
- url+="&subject="+encodeURIComponent(subject);
+let url = "/api/admin/attendance?password=" + password;
+
+/* ⭐ अगर subject है तभी filter लगाओ */
+if(subject && subject !== "undefined"){
+  url += "&subject=" + encodeURIComponent(subject);
 }
 
 fetch(url)
 .then(r=>r.json())
 .then(data=>{
+
+ tableBody.innerHTML="";
+
  if(!data.length){
-  tableBody.innerHTML="<tr><td colspan='5'>No Attendance Found</td></tr>";
-  return;
+   tableBody.innerHTML =
+   "<tr><td colspan='5'>No Attendance Found</td></tr>";
+   return;
  }
+
  data.forEach(a=>{
   tableBody.innerHTML+=`
-  <tr>
-  <td><img src="${a.photo}"></td>
-  <td>${a.name}</td>
-  <td>${a.subject}</td>
-  <td>${a.date}</td>
-  <td>${a.time}</td>
-  </tr>`;
+   <tr>
+    <td><img src="${a.photo}" width="40"></td>
+    <td>${a.name}</td>
+    <td>${a.subject}</td>
+    <td>${a.date}</td>
+    <td>${a.time}</td>
+   </tr>`;
  });
+
 });
+
 </script>
+
 
 </body>
 </html>
+
