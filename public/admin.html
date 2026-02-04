@@ -2,129 +2,37 @@
 <html>
 <head>
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>Admin Panel</title>
-
-<style>
-
-body{
-margin:0;
-font-family:Segoe UI;
-background:#eef2f7;
-display:flex;
-justify-content:center;
-align-items:center;
-min-height:100vh;
-padding:15px;
-}
-
-.card{
-background:white;
-width:100%;
-max-width:420px;
-padding:20px;
-border-radius:14px;
-box-shadow:0 6px 18px rgba(0,0,0,0.15);
-}
-
-input,select,button{
-width:100%;
-padding:12px;
-margin-top:10px;
-border-radius:8px;
-font-size:15px;
-}
-
-button{
-background:#1976d2;
-color:white;
-border:none;
-font-weight:bold;
-}
-
-</style>
+<title>ERP Teacher Login</title>
 </head>
-
 <body>
 
-<div class="card">
+<h3>Teacher Login</h3>
 
-<h3>👨‍🏫 Teacher Panel</h3>
-
-<input id="password" type="password" placeholder="Admin Password">
+<input id="id" placeholder="Teacher ID">
+<input id="password" type="password" placeholder="Password">
 <button onclick="login()">Login</button>
-
-<div id="panel" style="display:none;">
-
-<select id="subject"></select>
-
-<button onclick="useMyLocation()">📍 Set Location</button>
-<button onclick="updateSettings()">💾 Update</button>
-
-<button onclick="openAttendancePage()">📊 Load Attendance</button>
-
-</div>
-
-</div>
 
 <script>
 
-let adminPassword="";
-let classLat=0;
-let classLon=0;
-
 function login(){
-const pass=password.value;
 
 fetch("/api/admin/login",{
 method:"POST",
 headers:{"Content-Type":"application/json"},
-body:JSON.stringify({password:pass})
+body:JSON.stringify({
+id:id.value,
+password:password.value
+})
 })
 .then(r=>r.json())
 .then(d=>{
-if(d.message!=="Login success"){alert("Wrong password");return;}
-adminPassword=pass;
-panel.style.display="block";
-loadSubjects();
-});
+if(d.message==="Login success"){
+location.href="/attendance.html";
+}else{
+alert("Wrong login");
 }
-
-function loadSubjects(){
-fetch("/api/admin/subjects?password="+adminPassword)
-.then(r=>r.json())
-.then(list=>{
-subject.innerHTML="";
-list.forEach(s=>{
-subject.innerHTML+=`<option>${s}</option>`;
 });
-});
-}
 
-function useMyLocation(){
-navigator.geolocation.getCurrentPosition(pos=>{
-classLat=pos.coords.latitude;
-classLon=pos.coords.longitude;
-alert("Location Set ✔");
-});
-}
-
-function updateSettings(){
-fetch("/api/admin/settings",{
-method:"POST",
-headers:{"Content-Type":"application/json"},
-body:JSON.stringify({
-password:adminPassword,
-subject:subject.value,
-classLat,
-classLon
-})
-})
-.then(r=>r.json())
-.then(d=>alert(d.message));
-}
-
-function openAttendancePage(){
-window.location.href="/attendance.html?password="+adminPassword;
 }
 
 </script>
