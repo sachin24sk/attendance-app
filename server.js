@@ -1,201 +1,215 @@
-const express = require("express");
-const admin = require("firebase-admin");
-const session = require("express-session");
+const express=require("express");
+const admin=require("firebase-admin");
+const session=require("express-session");
 
-const app = express();
-const PORT = process.env.PORT || 3000;
+const app=express();
+const PORT=process.env.PORT||3000;
 
 /* ================= TEACHERS ================= */
 
-const TEACHERS = {
-  teacher1: { pass: "12345", class: "BSc 4th" },
-  teacher2: { pass: "67890", class: "BSc 3rd" }
+const TEACHERS={
+ teacher1:{pass:"12345",class:"BSc 4th"},
+ teacher2:{pass:"67890",class:"BSc 3rd"}
 };
 
 /* ================= SETTINGS ================= */
 
-let SETTINGS = {
-  subject: "ODE",
-  className: "BSc 4th",
-  classLat: 0,
-  classLon: 0
+let SETTINGS={
+ subject:"ODE",
+ className:"BSc 4th",
+ classLat:0,
+ classLon:0
 };
 
-const ALLOWED_DISTANCE = 100;
+const ALLOWED_DISTANCE=100;
 
 /* ================= FIREBASE ================= */
 
-const serviceAccount = JSON.parse(process.env.FIREBASE_KEY);
+const serviceAccount=JSON.parse(process.env.FIREBASE_KEY);
 
 admin.initializeApp({
-  credential: admin.credential.cert(serviceAccount)
+ credential:admin.credential.cert(serviceAccount)
 });
 
-const db = admin.firestore();
+const db=admin.firestore();
 
-app.use(express.json({ limit: "20mb" }));
+app.use(express.json({limit:"20mb"}));
 app.use(express.static("public"));
 
 /* ================= SESSION ================= */
 
 app.use(session({
-  secret: "erp-secret",
-  resave: false,
-  saveUninitialized: true
+ secret:"erp-secret",
+ resave:false,
+ saveUninitialized:true
 }));
 
 /* ================= DISTANCE FUNCTION ================= */
 
-function getDistanceInMeters(lat1, lon1, lat2, lon2) {
-  const R = 6371000;
-  const dLat = (lat2 - lat1) * Math.PI / 180;
-  const dLon = (lon2 - lon1) * Math.PI / 180;
+function getDistanceInMeters(lat1,lon1,lat2,lon2){
+const R=6371000;
+const dLat=(lat2-lat1)*Math.PI/180;
+const dLon=(lon2-lon1)*Math.PI/180;
 
-  const a =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos(lat1 * Math.PI / 180) *
-    Math.cos(lat2 * Math.PI / 180) *
-    Math.sin(dLon / 2) ** 2;
+const a=Math.sin(dLat/2)**2+
+Math.cos(lat1*Math.PI/180)*
+Math.cos(lat2*Math.PI/180)*
+Math.sin(dLon/2)**2;
 
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
 }
 
 /* ================= LOGIN ================= */
 
-app.post("/api/admin/login", (req, res) => {
+app.post("/api/admin/login",(req,res)=>{
 
-  const { id, password } = req.body;
+const {id,password}=req.body;
 
-  if (!TEACHERS[id] || TEACHERS[id].pass !== password) {
-    return res.status(401).json({ message: "Wrong login" });
-  }
+if(!TEACHERS[id]||TEACHERS[id].pass!==password){
+ return res.status(401).json({message:"Wrong login"});
+}
 
-  req.session.admin = id;
+req.session.admin=id;
 
-  res.json({
-    message: "Login success",
-    teacher: id
-  });
+res.json({
+ message:"Login success",
+ teacher:id
+});
 });
 
 /* ================= CHANGE PASSWORD ================= */
 
-app.post("/api/admin/change-password", (req, res) => {
+app.post("/api/admin/change-password",(req,res)=>{
 
-  if (!req.session.admin) {
-    return res.status(401).json({ message: "Not logged in" });
-  }
+if(!req.session.admin){
+ return res.status(401).json({message:"Not logged in"});
+}
 
-  const { oldPassword, newPassword } = req.body;
+const {oldPassword,newPassword}=req.body;
+const teacherId=req.session.admin;
 
-  const teacherId = req.session.admin;
+if(TEACHERS[teacherId].pass!==oldPassword){
+ return res.json({message:"Old password wrong"});
+}
 
-  if (TEACHERS[teacherId].pass !== oldPassword) {
-    return res.json({ message: "Old password wrong" });
-  }
+TEACHERS[teacherId].pass=newPassword;
 
-  TEACHERS[teacherId].pass = newPassword;
-
-  res.json({ message: "Password changed ✔" });
+res.json({message:"Password changed ✔"});
 });
 
-/* ================= CURRENT SUBJECT (Student Page) ================= */
+/* ================= CURRENT SUBJECT ================= */
 
-app.get("/api/current-subject", (req, res) => {
-  res.json({
-    subject: SETTINGS.subject,
-    className: SETTINGS.className
-  });
+app.get("/api/current-subject",(req,res)=>{
+res.json({
+ subject:SETTINGS.subject,
+ className:SETTINGS.className
+});
 });
 
-/* ================= UPDATE SUBJECT + LOCATION ================= */
+/* ================= UPDATE SETTINGS ================= */
 
-app.post("/api/admin/settings", (req, res) => {
+app.post("/api/admin/settings",(req,res)=>{
 
-  if (!req.session.admin)
-    return res.status(401).json({ message: "Not logged in" });
+if(!req.session.admin)
+ return res.status(401).json({message:"Not logged in"});
 
-  const { subject, className, classLat, classLon } = req.body;
+const {subject,className,classLat,classLon}=req.body;
 
-  SETTINGS.subject = subject;
-  SETTINGS.className = className;
-  SETTINGS.classLat = Number(classLat || 0);
-  SETTINGS.classLon = Number(classLon || 0);
+/* SUBJECT ALWAYS UPDATE */
+SETTINGS.subject=subject;
+SETTINGS.className=className;
 
-  res.json({ message: "Updated Successfully ✔" });
+/* ⭐ LOCATION LOCK SYSTEM */
+if(classLat && classLon){
+ SETTINGS.classLat=Number(classLat);
+ SETTINGS.classLon=Number(classLon);
+}
+
+res.json({message:"Updated Successfully ✔"});
 });
 
 /* ================= STUDENT ATTENDANCE ================= */
 
-app.post("/api/attendance", async (req, res) => {
+app.post("/api/attendance",async(req,res)=>{
 
-  const { name, photo, latitude, longitude, time } = req.body;
+const {name,photo,latitude,longitude,time}=req.body;
 
-  const todayDate = new Date().toLocaleDateString();
+const todayDate=new Date().toLocaleDateString();
 
-  const distance = getDistanceInMeters(
-    SETTINGS.classLat,
-    SETTINGS.classLon,
-    latitude,
-    longitude
-  );
+/* ⭐ LOCATION NOT SET CHECK */
+if(SETTINGS.classLat===0 || SETTINGS.classLon===0){
+ return res.json({
+ message:"Teacher location not set",
+ subject:SETTINGS.subject,
+ date:todayDate
+ });
+}
 
-  if (distance > ALLOWED_DISTANCE) {
-    return res.status(403).json({ message: "Outside class location" });
-  }
+const distance=getDistanceInMeters(
+ SETTINGS.classLat,
+ SETTINGS.classLon,
+ latitude,
+ longitude
+);
 
-  const existing = await db.collection("attendance")
-    .where("name", "==", name)
-    .where("subject", "==", SETTINGS.subject)
-    .where("date", "==", todayDate)
-    .get();
+if(distance>ALLOWED_DISTANCE){
+ return res.status(403).json({message:"Outside class location"});
+}
 
-  if (!existing.empty) {
-    return res.json({
-      message: "Already marked today ✔",
-      subject: SETTINGS.subject,
-      date: todayDate
-    });
-  }
+/* DUPLICATE CHECK */
+const existing=await db.collection("attendance")
+.where("name","==",name)
+.where("subject","==",SETTINGS.subject)
+.where("date","==",todayDate)
+.get();
 
-  await db.collection("attendance").add({
-    name,
-    className: SETTINGS.className,
-    subject: SETTINGS.subject,
-    photo,
-    latitude,
-    longitude,
-    time,
-    date: todayDate,
-    createdAt: new Date()
-  });
+if(!existing.empty){
+ return res.json({
+ message:"Already marked today ✔",
+ subject:SETTINGS.subject,
+ date:todayDate
+ });
+}
 
-  res.json({
-    message: "Attendance saved ✔",
-    subject: SETTINGS.subject,
-    date: todayDate
-  });
+/* SAVE ATTENDANCE */
+await db.collection("attendance").add({
+ name,
+ className:SETTINGS.className,
+ subject:SETTINGS.subject,
+ photo,
+ latitude,
+ longitude,
+ time,
+ date:todayDate,
+ createdAt:new Date()
 });
 
-/* ================= ATTENDANCE DASHBOARD ================= */
+res.json({
+ message:"Attendance saved ✔",
+ subject:SETTINGS.subject,
+ date:todayDate
+});
+});
 
-app.get("/api/admin/attendance", async (req, res) => {
+/* ================= ADMIN ATTENDANCE DASHBOARD ================= */
 
-  if (!req.session.admin)
-    return res.status(401).json({ message: "Not logged in" });
+app.get("/api/admin/attendance",async(req,res)=>{
 
-  const snapshot = await db.collection("attendance")
-    .orderBy("createdAt", "desc")
-    .get();
+if(!req.session.admin)
+ return res.status(401).json({message:"Not logged in"});
 
-  const list = [];
-  snapshot.forEach(doc => list.push(doc.data()));
+const snapshot=await db.collection("attendance")
+.orderBy("createdAt","desc")
+.get();
 
-  res.json(list);
+const list=[];
+snapshot.forEach(doc=>list.push(doc.data()));
+
+res.json(list);
 });
 
 /* ================= SERVER START ================= */
 
-app.listen(PORT, () => {
-  console.log("🔥 FINAL PRO ERP SERVER RUNNING");
+app.listen(PORT,()=>{
+console.log("🔥 FINAL PRO ERP SERVER RUNNING");
 });
