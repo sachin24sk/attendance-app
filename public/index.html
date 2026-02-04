@@ -5,89 +5,100 @@
 <title>Smart Attendance</title>
 
 <style>
+
 body{
-margin:0;
 font-family:Segoe UI;
-background:#1976d2;
-display:flex;
-justify-content:center;
-align-items:center;
-min-height:100vh;
+margin:0;
+background:#eef2f7;
+text-align:center;
 padding:15px;
 }
-.card{
-background:white;
-width:100%;
-max-width:360px;
-padding:20px;
-border-radius:14px;
-text-align:center;
+
+h2{
+margin:10px 0;
 }
-input,button{
+
+video{
 width:100%;
+max-width:320px;
+border-radius:12px;
+background:black;
+}
+
+button,input{
+width:100%;
+max-width:320px;
 padding:12px;
 margin-top:10px;
 border-radius:8px;
+font-size:15px;
 }
-video{
-width:100%;
-border-radius:10px;
-margin-top:10px;
+
+button{
+background:#1976d2;
+color:white;
+border:none;
+font-weight:bold;
 }
+
 #status{
 margin-top:10px;
-background:#e3f2fd;
-padding:10px;
-border-radius:8px;
 white-space:pre-line;
-}
-#subjectTitle{
-font-weight:bold;
-margin-bottom:8px;
 color:#1976d2;
 }
+
 </style>
 </head>
 
 <body>
 
-<div class="card">
+<h2>🎓 Smart Attendance</h2>
 
-<h3>🎓 Smart Attendance</h3>
-<div id="subjectTitle">Loading subject...</div>
+<h3 id="subjectTitle">Loading subject...</h3>
 
-<input id="name" placeholder="Enter Name">
+<input id="name" placeholder="Enter Your Name">
 
 <video id="video" autoplay playsinline></video>
 
-<button onclick="capturePhoto()">Capture Photo</button>
+<button onclick="switchCamera()">🔄 Switch Camera</button>
+<button onclick="capturePhoto()">📸 Capture Photo</button>
 
-<canvas id="canvas" width="300" height="220" style="display:none;"></canvas>
+<canvas id="canvas" width="300" height="220" style="display:none"></canvas>
 
-<button onclick="markAttendance()">Submit Attendance</button>
+<button onclick="markAttendance()">✅ Mark Attendance</button>
 
-<div id="status">Ready...</div>
-
-</div>
+<div id="status"></div>
 
 <script>
 
-const video = document.getElementById("video");
-const statusBox = document.getElementById("status");
+const video=document.getElementById("video");
+const statusBox=document.getElementById("status");
 
 let capturedPhoto="";
-let currentCamera="environment"; // back camera default
+let currentCamera="environment";
 let stream=null;
 
-/* ⭐ START CAMERA FUNCTION */
+/* ⭐ LOAD SUBJECT */
+
+fetch("/api/current-subject")
+.then(r=>r.json())
+.then(d=>{
+document.getElementById("subjectTitle").innerText=
+"📚 "+d.subject+" | "+d.className;
+})
+.catch(()=>{
+document.getElementById("subjectTitle").innerText="Subject not found";
+});
+
+/* ⭐ START CAMERA */
+
 function startCamera(){
 
 navigator.mediaDevices.getUserMedia({
- video:{facingMode: currentCamera}
+ video:{facingMode:currentCamera}
 })
 .then(s=>{
 
-/* OLD STREAM STOP */
 if(stream){
  stream.getTracks().forEach(track=>track.stop());
 }
@@ -97,51 +108,53 @@ video.srcObject=stream;
 
 })
 .catch(()=>{
- statusBox.innerText="Camera permission allow karo";
+statusBox.innerText="Camera permission allow karo";
 });
 
 }
 
-/* FIRST CAMERA START */
 startCamera();
 
-/* ⭐ SWITCH CAMERA BUTTON */
+/* ⭐ SWITCH CAMERA */
+
 function switchCamera(){
 
-if(currentCamera==="environment"){
- currentCamera="user"; // front
-}else{
- currentCamera="environment"; // back
-}
+currentCamera=
+(currentCamera==="environment")?"user":"environment";
 
 startCamera();
 
 }
 
-/* PHOTO CAPTURE */
+/* ⭐ CAPTURE PHOTO */
+
 function capturePhoto(){
 
 const canvas=document.getElementById("canvas");
-canvas.getContext("2d").drawImage(video,0,0,300,220);
+
+canvas.getContext("2d")
+.drawImage(video,0,0,300,220);
+
 capturedPhoto=canvas.toDataURL("image/png");
 
 statusBox.innerText="Photo captured ✔";
 
 }
 
-/* ATTENDANCE */
+/* ⭐ MARK ATTENDANCE */
+
 function markAttendance(){
 
 const name=document.getElementById("name").value.trim();
 
 if(!name){
- statusBox.innerText="Name enter karo";
- return;
+statusBox.innerText="Name enter karo";
+return;
 }
 
 if(!capturedPhoto){
- statusBox.innerText="Photo capture karo";
- return;
+statusBox.innerText="Photo capture karo";
+return;
 }
 
 statusBox.innerText="Sending attendance...";
@@ -149,31 +162,34 @@ statusBox.innerText="Sending attendance...";
 navigator.geolocation.getCurrentPosition(pos=>{
 
 fetch("/api/attendance",{
- method:"POST",
- headers:{"Content-Type":"application/json"},
- body:JSON.stringify({
-  name:name,
-  photo:capturedPhoto,
-  latitude:pos.coords.latitude,
-  longitude:pos.coords.longitude,
-  time:new Date().toLocaleTimeString()
- })
+method:"POST",
+headers:{"Content-Type":"application/json"},
+body:JSON.stringify({
+ name:name,
+ photo:capturedPhoto,
+ latitude:pos.coords.latitude,
+ longitude:pos.coords.longitude,
+ time:new Date().toLocaleTimeString()
+})
 })
 .then(r=>r.json())
 .then(d=>{
- statusBox.innerText =
- d.message+"\nSubject: "+d.subject+"\nDate: "+d.date;
+statusBox.innerText=
+d.message+"\nSubject: "+d.subject+"\nDate: "+d.date;
+})
+.catch(()=>{
+statusBox.innerText="Server error";
 });
 
-});
+},
+()=>{
+statusBox.innerText="Location allow karo";
+},
+{enableHighAccuracy:true});
 
 }
 
 </script>
 
-
-
 </body>
 </html>
-
-
