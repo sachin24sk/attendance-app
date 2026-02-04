@@ -10,6 +10,16 @@ background:#f2f4f7;
 padding:20px;
 }
 
+h2{
+margin-bottom:10px;
+}
+
+select{
+padding:8px;
+margin-bottom:15px;
+border-radius:6px;
+}
+
 table{
 width:100%;
 border-collapse:collapse;
@@ -40,6 +50,11 @@ border-radius:50%;
 
 <h2>📊 Attendance</h2>
 
+<!-- ⭐ SUBJECT DROPDOWN -->
+<select id="subjectFilter">
+<option value="">All Subjects</option>
+</select>
+
 <table>
 <thead>
 <tr>
@@ -58,37 +73,57 @@ border-radius:50%;
 <script>
 
 const tableBody = document.getElementById("tableBody");
+const subjectFilter = document.getElementById("subjectFilter");
 
 const params = new URLSearchParams(window.location.search);
+const password = params.get("password") || "12345";
 
-const password = params.get("password");
-const subject  = params.get("subject");
+let allData = [];
 
-let url = "/api/admin/attendance?password=" + password;
-
-if(subject){
- url += "&subject=" + encodeURIComponent(subject);
-}
-
-fetch(url)
+/* ⭐ LOAD ALL ATTENDANCE FIRST */
+fetch("/api/admin/attendance?password=" + password)
 .then(res => res.json())
 .then(data => {
 
- console.log("DATA FROM API:",data);
+ console.log("FULL DATA:",data);
+
+ allData = data;
+
+ fillDropdown(data);
+ renderTable(data);
+
+});
+
+/* ⭐ DROPDOWN SUBJECT LIST */
+function fillDropdown(data){
+
+ const subjects = [...new Set(data.map(d => d.subject))];
+
+ subjects.forEach(s=>{
+   const opt = document.createElement("option");
+   opt.value = s;
+   opt.textContent = s;
+   subjectFilter.appendChild(opt);
+ });
+
+}
+
+/* ⭐ TABLE RENDER FUNCTION */
+function renderTable(data){
 
  tableBody.innerHTML="";
 
- if(!data || data.length===0){
+ if(!data.length){
    tableBody.innerHTML =
    "<tr><td colspan='5'>No Attendance Found</td></tr>";
    return;
  }
 
- data.forEach(a => {
+ data.forEach(a=>{
 
-  const row = document.createElement("tr");
+  const row=document.createElement("tr");
 
-  row.innerHTML = `
+  row.innerHTML=`
    <td><img src="${a.photo}"></td>
    <td>${a.name}</td>
    <td>${a.subject}</td>
@@ -97,7 +132,24 @@ fetch(url)
   `;
 
   tableBody.appendChild(row);
+
  });
+
+}
+
+/* ⭐ FILTER CHANGE */
+subjectFilter.addEventListener("change",()=>{
+
+ const value = subjectFilter.value;
+
+ if(!value){
+   renderTable(allData);
+   return;
+ }
+
+ const filtered = allData.filter(d=>d.subject===value);
+
+ renderTable(filtered);
 
 });
 
