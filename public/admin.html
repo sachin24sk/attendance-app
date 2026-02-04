@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>ERP Teacher Login</title>
+</head>
+<body>
+
+<h3>Teacher Login</h3>
+
+<input id="id" placeholder="Teacher ID">
+<input id="password" type="password" placeholder="Password">
+<button onclick="login()">Login</button>
+
+<script>
+
+function login(){
+
+fetch("/api/admin/login",{
+method:"POST",
+headers:{"Content-Type":"application/json"},
+body:JSON.stringify({
+id:id.value,
+password:password.value
+})
+})
+.then(r=>r.json())
+.then(d=>{
+if(d.message==="Login success"){
+location.href="/attendance.html";
+}else{
+alert("Wrong login");
+}
+});
+
+}
+
+</script>
+
+</body>
+</html>
