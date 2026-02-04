@@ -6,7 +6,7 @@ const app = express();
 /* ⭐ Render PORT FIX */
 const PORT = process.env.PORT || 3000;
 
-const ADMIN_PASSWORD = "Sachin@04";
+const ADMIN_PASSWORD = "9876";
 
 let SETTINGS = {
   subject: "BSc 4th ODE",
@@ -181,4 +181,5 @@ app.get("/api/admin/attendance", async (req, res) => {
 app.listen(PORT, () => {
   console.log("Server running...");
 });
+
 
