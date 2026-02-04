@@ -75,39 +75,61 @@ color:#1976d2;
 const video = document.getElementById("video");
 const statusBox = document.getElementById("status");
 
-let capturedPhoto = "";
+let capturedPhoto="";
+let currentCamera="environment"; // back camera default
+let stream=null;
 
-/* SUBJECT HEADING LOAD */
-fetch("/api/current-subject")
-.then(r=>r.json())
-.then(d=>{
-document.getElementById("subjectTitle").innerText =
-"Subject: " + d.subject;
-});
+/* ⭐ START CAMERA FUNCTION */
+function startCamera(){
 
-/* MOBILE CAMERA */
 navigator.mediaDevices.getUserMedia({
- video:{facingMode:"environment"}
+ video:{facingMode: currentCamera}
 })
-.then(stream=>{
- video.srcObject = stream;
+.then(s=>{
+
+/* OLD STREAM STOP */
+if(stream){
+ stream.getTracks().forEach(track=>track.stop());
+}
+
+stream=s;
+video.srcObject=stream;
+
 })
 .catch(()=>{
  statusBox.innerText="Camera permission allow karo";
 });
+
+}
+
+/* FIRST CAMERA START */
+startCamera();
+
+/* ⭐ SWITCH CAMERA BUTTON */
+function switchCamera(){
+
+if(currentCamera==="environment"){
+ currentCamera="user"; // front
+}else{
+ currentCamera="environment"; // back
+}
+
+startCamera();
+
+}
 
 /* PHOTO CAPTURE */
 function capturePhoto(){
 
 const canvas=document.getElementById("canvas");
 canvas.getContext("2d").drawImage(video,0,0,300,220);
-capturedPhoto = canvas.toDataURL("image/png");
+capturedPhoto=canvas.toDataURL("image/png");
 
 statusBox.innerText="Photo captured ✔";
 
 }
 
-/* ⭐ FINAL ATTENDANCE FUNCTION */
+/* ATTENDANCE */
 function markAttendance(){
 
 const name=document.getElementById("name").value.trim();
@@ -124,7 +146,6 @@ if(!capturedPhoto){
 
 statusBox.innerText="Sending attendance...";
 
-/* LOCATION */
 navigator.geolocation.getCurrentPosition(pos=>{
 
 fetch("/api/attendance",{
@@ -141,23 +162,18 @@ fetch("/api/attendance",{
 .then(r=>r.json())
 .then(d=>{
  statusBox.innerText =
- d.message + "\nSubject: " + d.subject + "\nDate: " + d.date;
-})
-.catch(()=>{
- statusBox.innerText="Server error";
+ d.message+"\nSubject: "+d.subject+"\nDate: "+d.date;
 });
 
-},
-()=>{
- statusBox.innerText="Location allow karo";
-},
-{enableHighAccuracy:true});
+});
 
 }
 
 </script>
 
 
+
 </body>
 </html>
+
 
