@@ -7,27 +7,55 @@
 <style>
 
 body{
-font-family:Segoe UI;
 margin:0;
-background:#eef2f7;
-text-align:center;
+font-family:Segoe UI;
+background:linear-gradient(135deg,#1976d2,#42a5f5);
+display:flex;
+justify-content:center;
+align-items:center;
+min-height:100vh;
 padding:15px;
 }
 
+.card{
+background:white;
+width:100%;
+max-width:360px;
+border-radius:14px;
+padding:18px;
+box-shadow:0 10px 25px rgba(0,0,0,0.2);
+text-align:center;
+}
+
 h2{
-margin:10px 0;
+margin:5px 0;
+color:#1976d2;
 }
 
 video{
 width:100%;
-max-width:320px;
 border-radius:12px;
 background:black;
 }
 
-button,input{
+#preview{
+margin-top:10px;
 width:100%;
-max-width:320px;
+border-radius:12px;
+display:none;
+}
+
+.row{
+display:flex;
+gap:8px;
+}
+
+.row button{
+flex:1;
+}
+
+input,button{
+width:100%;
 padding:12px;
 margin-top:10px;
 border-radius:8px;
@@ -45,6 +73,7 @@ font-weight:bold;
 margin-top:10px;
 white-space:pre-line;
 color:#1976d2;
+font-size:14px;
 }
 
 </style>
@@ -52,16 +81,26 @@ color:#1976d2;
 
 <body>
 
-<h2>🎓 Smart Attendance</h2>
+<div class="card">
 
-<h3 id="subjectTitle">Loading subject...</h3>
+<h2>🎓 Smart Attendance</h2>
+<h4 id="subjectTitle">Loading subject...</h4>
 
 <input id="name" placeholder="Enter Your Name">
 
 <video id="video" autoplay playsinline></video>
 
-<button onclick="switchCamera()">🔄 Switch Camera</button>
-<button onclick="capturePhoto()">📸 Capture Photo</button>
+<!-- ⭐ SWITCH + CAPTURE SAME LINE -->
+<div class="row">
+<button onclick="switchCamera()">🔄 Switch</button>
+<button onclick="capturePhoto()">📸 Capture</button>
+</div>
+
+<button id="retakeBtn" onclick="retakePhoto()" style="display:none;background:#f57c00;">
+🔁 Recapture Photo
+</button>
+
+<img id="preview">
 
 <canvas id="canvas" width="300" height="220" style="display:none"></canvas>
 
@@ -69,16 +108,20 @@ color:#1976d2;
 
 <div id="status"></div>
 
+</div>
+
 <script>
 
 const video=document.getElementById("video");
 const statusBox=document.getElementById("status");
+const preview=document.getElementById("preview");
+const retakeBtn=document.getElementById("retakeBtn");
 
 let capturedPhoto="";
 let currentCamera="environment";
 let stream=null;
 
-/* ⭐ LOAD SUBJECT */
+/* SUBJECT LOAD */
 
 fetch("/api/current-subject")
 .then(r=>r.json())
@@ -90,17 +133,17 @@ document.getElementById("subjectTitle").innerText=
 document.getElementById("subjectTitle").innerText="Subject not found";
 });
 
-/* ⭐ START CAMERA */
+/* CAMERA START */
 
 function startCamera(){
 
 navigator.mediaDevices.getUserMedia({
- video:{facingMode:currentCamera}
+video:{facingMode:currentCamera}
 })
 .then(s=>{
 
 if(stream){
- stream.getTracks().forEach(track=>track.stop());
+stream.getTracks().forEach(track=>track.stop());
 }
 
 stream=s;
@@ -115,33 +158,58 @@ statusBox.innerText="Camera permission allow karo";
 
 startCamera();
 
-/* ⭐ SWITCH CAMERA */
+/* SWITCH CAMERA */
 
 function switchCamera(){
-
-currentCamera=
-(currentCamera==="environment")?"user":"environment";
-
+currentCamera=(currentCamera==="environment")?"user":"environment";
 startCamera();
-
 }
 
-/* ⭐ CAPTURE PHOTO */
+/* CAPTURE PHOTO */
 
 function capturePhoto(){
 
 const canvas=document.getElementById("canvas");
 
-canvas.getContext("2d")
-.drawImage(video,0,0,300,220);
+canvas.getContext("2d").drawImage(video,0,0,300,220);
 
 capturedPhoto=canvas.toDataURL("image/png");
+
+/* CAMERA HIDE */
+video.style.display="none";
+
+if(stream){
+stream.getTracks().forEach(track=>track.stop());
+}
+
+/* SHOW PREVIEW */
+preview.src=capturedPhoto;
+preview.style.display="block";
+
+/* SHOW RETAKE BUTTON */
+retakeBtn.style.display="block";
 
 statusBox.innerText="Photo captured ✔";
 
 }
 
-/* ⭐ MARK ATTENDANCE */
+/* ⭐ RECAPTURE PHOTO */
+
+function retakePhoto(){
+
+preview.style.display="none";
+video.style.display="block";
+retakeBtn.style.display="none";
+
+capturedPhoto="";
+
+startCamera();
+
+statusBox.innerText="Camera restarted";
+
+}
+
+/* MARK ATTENDANCE */
 
 function markAttendance(){
 
@@ -165,20 +233,17 @@ fetch("/api/attendance",{
 method:"POST",
 headers:{"Content-Type":"application/json"},
 body:JSON.stringify({
- name:name,
- photo:capturedPhoto,
- latitude:pos.coords.latitude,
- longitude:pos.coords.longitude,
- time:new Date().toLocaleTimeString()
+name:name,
+photo:capturedPhoto,
+latitude:pos.coords.latitude,
+longitude:pos.coords.longitude,
+time:new Date().toLocaleTimeString()
 })
 })
 .then(r=>r.json())
 .then(d=>{
 statusBox.innerText=
 d.message+"\nSubject: "+d.subject+"\nDate: "+d.date;
-})
-.catch(()=>{
-statusBox.innerText="Server error";
 });
 
 },
