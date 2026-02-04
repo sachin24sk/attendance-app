@@ -30,6 +30,8 @@ img{width:45px;height:45px;border-radius:50%;}
 
 <script>
 
+const tableBody = document.getElementById("tableBody");
+
 const params = new URLSearchParams(window.location.search);
 
 const password = params.get("password");
@@ -37,32 +39,37 @@ const subject  = params.get("subject");
 
 let url = "/api/admin/attendance?password=" + password;
 
-/* ⭐ अगर subject है तभी filter लगाओ */
-if(subject && subject !== "undefined"){
-  url += "&subject=" + encodeURIComponent(subject);
+if(subject){
+ url += "&subject=" + encodeURIComponent(subject);
 }
 
 fetch(url)
-.then(r=>r.json())
-.then(data=>{
+.then(res => res.json())
+.then(data => {
 
- tableBody.innerHTML="";
+ console.log("Attendance Data:", data); // DEBUG
 
- if(!data.length){
+ tableBody.innerHTML = "";
+
+ if(!data || data.length === 0){
    tableBody.innerHTML =
    "<tr><td colspan='5'>No Attendance Found</td></tr>";
    return;
  }
 
- data.forEach(a=>{
-  tableBody.innerHTML+=`
-   <tr>
-    <td><img src="${a.photo}" width="40"></td>
+ data.forEach(a => {
+
+  const row = document.createElement("tr");
+
+  row.innerHTML = `
+    <td><img src="${a.photo}" width="45"></td>
     <td>${a.name}</td>
     <td>${a.subject}</td>
     <td>${a.date}</td>
     <td>${a.time}</td>
-   </tr>`;
+  `;
+
+  tableBody.appendChild(row);
  });
 
 });
@@ -70,6 +77,8 @@ fetch(url)
 </script>
 
 
+
 </body>
 </html>
+
 
