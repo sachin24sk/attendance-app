@@ -3,11 +3,13 @@ const admin = require("firebase-admin");
 
 const app = express();
 
-/* ⭐ Render PORT FIX */
+/* ⭐ Render PORT */
 const PORT = process.env.PORT || 3000;
 
-const ADMIN_PASSWORD = "12345";
+/* ⭐ ADMIN PASSWORD (CHANGEABLE) */
+let ADMIN_PASSWORD = "12345";
 
+/* ⭐ SETTINGS */
 let SETTINGS = {
   subject: "BSc 4th ODE",
   subjects: [
@@ -23,7 +25,7 @@ let SETTINGS = {
 
 const ALLOWED_DISTANCE = 100;
 
-/* ⭐ SECURE FIREBASE KEY (Render ENV VARIABLE) */
+/* ⭐ SECURE FIREBASE FROM RENDER ENV */
 const serviceAccount = JSON.parse(process.env.FIREBASE_KEY);
 
 admin.initializeApp({
@@ -51,17 +53,40 @@ function getDistanceInMeters(lat1, lon1, lat2, lon2) {
   return R * c;
 }
 
+/* ================= ADMIN ================= */
+
 /* ADMIN LOGIN */
 app.post("/api/admin/login", (req, res) => {
   const { password } = req.body;
+
   if (!password || password.trim() !== ADMIN_PASSWORD) {
     return res.status(401).json({ message: "Wrong password" });
   }
+
   res.json({ message: "Login success" });
+});
+
+/* ⭐ CHANGE PASSWORD */
+app.post("/api/admin/change-password", (req, res) => {
+
+  const { oldPassword, newPassword } = req.body;
+
+  if (oldPassword !== ADMIN_PASSWORD) {
+    return res.status(401).json({ message: "Old password wrong" });
+  }
+
+  if (!newPassword) {
+    return res.json({ message: "New password empty" });
+  }
+
+  ADMIN_PASSWORD = newPassword;
+
+  res.json({ message: "Password changed successfully ✔" });
 });
 
 /* UPDATE SUBJECT + LOCATION */
 app.post("/api/admin/settings", (req, res) => {
+
   const { password, subject, classLat, classLon } = req.body;
 
   if (!password || password.trim() !== ADMIN_PASSWORD) {
@@ -77,6 +102,7 @@ app.post("/api/admin/settings", (req, res) => {
 
 /* ADD SUBJECT */
 app.post("/api/admin/add-subject", (req, res) => {
+
   const { password, subject } = req.body;
 
   if (!password || password.trim() !== ADMIN_PASSWORD) {
@@ -96,6 +122,7 @@ app.post("/api/admin/add-subject", (req, res) => {
 
 /* SUBJECT LIST */
 app.get("/api/admin/subjects", (req, res) => {
+
   const password = req.query.password;
 
   if (!password || password.trim() !== ADMIN_PASSWORD) {
@@ -105,8 +132,11 @@ app.get("/api/admin/subjects", (req, res) => {
   res.json(SETTINGS.subjects);
 });
 
-/* STUDENT ATTENDANCE */
+/* ================= STUDENT ================= */
+
+/* ATTENDANCE MARK */
 app.post("/api/attendance", async (req, res) => {
+
   const { name, photo, latitude, longitude, time } = req.body;
 
   const todayDate = new Date().toLocaleDateString();
@@ -122,6 +152,7 @@ app.post("/api/attendance", async (req, res) => {
     return res.status(403).json({ message: "Outside class location" });
   }
 
+  /* DUPLICATE CHECK */
   const existing = await db.collection("attendance")
     .where("name", "==", name)
     .where("subject", "==", SETTINGS.subject)
@@ -136,6 +167,7 @@ app.post("/api/attendance", async (req, res) => {
     });
   }
 
+  /* SAVE ATTENDANCE */
   await db.collection("attendance").add({
     name,
     subject: SETTINGS.subject,
@@ -154,8 +186,10 @@ app.post("/api/attendance", async (req, res) => {
   });
 });
 
-/* ADMIN VIEW ATTENDANCE */
+/* ================= VIEW ATTENDANCE ================= */
+
 app.get("/api/admin/attendance", async (req, res) => {
+
   const password = req.query.password;
   const subject = req.query.subject;
 
@@ -177,10 +211,8 @@ app.get("/api/admin/attendance", async (req, res) => {
   res.json(list);
 });
 
-/* SERVER START */
+/* ================= SERVER START ================= */
+
 app.listen(PORT, () => {
   console.log("Server running...");
 });
-
-
-
