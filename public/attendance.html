@@ -1,13 +1,38 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>Attendance List</title>
+<title>Attendance</title>
+
 <style>
-body{font-family:Segoe UI;background:#f4f6fb;padding:20px;}
-table{width:100%;border-collapse:collapse;background:white;}
-th{background:#1976d2;color:white;padding:10px;}
-td{padding:8px;text-align:center;border-bottom:1px solid #eee;}
-img{width:45px;height:45px;border-radius:50%;}
+body{
+font-family:Segoe UI;
+background:#f2f4f7;
+padding:20px;
+}
+
+table{
+width:100%;
+border-collapse:collapse;
+background:white;
+}
+
+th{
+background:#2c6fb7;
+color:white;
+padding:10px;
+}
+
+td{
+padding:10px;
+text-align:center;
+border-bottom:1px solid #eee;
+}
+
+img{
+width:45px;
+height:45px;
+border-radius:50%;
+}
 </style>
 </head>
 
@@ -25,7 +50,9 @@ img{width:45px;height:45px;border-radius:50%;}
 <th>Time</th>
 </tr>
 </thead>
+
 <tbody id="tableBody"></tbody>
+
 </table>
 
 <script>
@@ -47,11 +74,11 @@ fetch(url)
 .then(res => res.json())
 .then(data => {
 
- console.log("Attendance Data:", data); // DEBUG
+ console.log("DATA FROM API:",data);
 
- tableBody.innerHTML = "";
+ tableBody.innerHTML="";
 
- if(!data || data.length === 0){
+ if(!data || data.length===0){
    tableBody.innerHTML =
    "<tr><td colspan='5'>No Attendance Found</td></tr>";
    return;
@@ -62,11 +89,11 @@ fetch(url)
   const row = document.createElement("tr");
 
   row.innerHTML = `
-    <td><img src="${a.photo}" width="45"></td>
-    <td>${a.name}</td>
-    <td>${a.subject}</td>
-    <td>${a.date}</td>
-    <td>${a.time}</td>
+   <td><img src="${a.photo}"></td>
+   <td>${a.name}</td>
+   <td>${a.subject}</td>
+   <td>${a.date}</td>
+   <td>${a.time}</td>
   `;
 
   tableBody.appendChild(row);
@@ -76,9 +103,5 @@ fetch(url)
 
 </script>
 
-
-
 </body>
 </html>
-
-
